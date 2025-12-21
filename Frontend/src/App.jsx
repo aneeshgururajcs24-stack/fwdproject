@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 import { transactionAPI, authAPI, setAuthToken, getAuthToken } from './api';
 import TransactionForm from './components/TransactionForm';
 import TransactionList from './components/TransactionList';
 import Summary from './components/Summary';
+import SearchFilter from './components/SearchFilter';
 import Auth from './components/Auth';
+import Charts from './components/Charts';
+import Navigation from './components/Navigation';
+import Settings from './components/Settings';
+import RecurringTransactions from './components/RecurringTransactions';
+import Goals from './components/Goals';
 import './App.css';
+import './components/recurring-goals.css';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,6 +26,17 @@ function App() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [currency, setCurrency] = useState(() => {
+    return localStorage.getItem('currency') || 'USD';
+  });
+  const [activePage, setActivePage] = useState('summary');
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('darkMode') === 'true';
+  });
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -43,6 +62,19 @@ function App() {
       loadData();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    localStorage.setItem('currency', currency);
+  }, [currency]);
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', darkMode);
+    if (darkMode) {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+  }, [darkMode]);
 
   const loadData = async () => {
     await Promise.all([fetchTransactions(), fetchSummary()]);
@@ -78,6 +110,7 @@ function App() {
       } else {
         console.log('Attempting registration...');
         await authAPI.register({ email, password, name });
+        toast.success('Account created successfully!');
         console.log('Registration successful, logging in...');
         response = await authAPI.login({ email, password });
         console.log('Login after registration successful');
@@ -88,8 +121,14 @@ function App() {
       const userResponse = await authAPI.getCurrentUser();
       setUser(userResponse.data);
       setIsAuthenticated(true);
+
+      if (isLogin) {
+        toast.success(`Welcome back, ${userResponse.data.name}!`);
+      }
     } catch (err) {
       console.error('handleLogin error:', err);
+      const errorMsg = err.response?.data?.detail || 'An error occurred';
+      toast.error(errorMsg);
       throw err;
     }
   };
@@ -105,6 +144,7 @@ function App() {
       balance: 0,
       transaction_count: 0,
     });
+    toast.success('Logged out successfully');
   };
 
   const handleAddTransaction = async (transaction) => {
@@ -112,10 +152,134 @@ function App() {
       await transactionAPI.create(transaction);
       await Promise.all([fetchTransactions(), fetchSummary()]);
       setError(null);
+      toast.success(`${transaction.type === 'income' ? 'Income' : 'Expense'} added successfully!`);
     } catch (err) {
-      setError('Failed to add transaction');
+      const errorMsg = 'Failed to add transaction';
+      setError(errorMsg);
+      toast.error(errorMsg);
       console.error(err);
     }
+  };
+
+  const handleUpdateTransaction = async (id, transaction) => {
+    try {
+      await transactionAPI.update(id, transaction);
+      await Promise.all([fetchTransactions(), fetchSummary()]);
+      setError(null);
+      setEditingTransaction(null);
+      toast.success('Transaction updated successfully!');
+    } catch (err) {
+      const errorMsg = 'Failed to update transaction';
+      setError(errorMsg);
+      toast.error(errorMsg);
+      console.error(err);
+    }
+  };
+
+  const handleEditTransaction = (transaction) => {
+    setEditingTransaction(transaction);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTransaction(null);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setFilterType('all');
+    setDateFilter('all');
+    toast.success('Filters cleared');
+  };
+
+  const handleCurrencyChange = (newCurrency) => {
+    setCurrency(newCurrency);
+    toast.success(`Currency changed to ${getCurrencyName(newCurrency)}`);
+  };
+
+  const getCurrencySymbol = (currencyCode) => {
+    const symbols = {
+      USD: '$',
+      INR: '₹',
+      EUR: '€',
+      JPY: '¥',
+      NPR: 'रू'
+    };
+    return symbols[currencyCode] || '$';
+  };
+
+  const getCurrencyName = (currencyCode) => {
+    const names = {
+      USD: 'US Dollar',
+      INR: 'Indian Rupee',
+      EUR: 'Euro',
+      JPY: 'Japanese Yen',
+      NPR: 'Nepali Rupee'
+    };
+    return names[currencyCode] || 'US Dollar';
+  };
+
+  const handleToggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    toast.success(`Dark mode ${!darkMode ? 'enabled' : 'disabled'}`);
+  };
+
+  const handleUpdateUser = async (newUsername) => {
+    try {
+      const response = await authAPI.updateProfile({ name: newUsername });
+      setUser(response.data);
+      toast.success('Username updated successfully!');
+    } catch (err) {
+      const errorMsg = err.response?.data?.detail || 'Failed to update username';
+      toast.error(errorMsg);
+      console.error(err);
+    }
+  };
+
+  const handleChangePassword = async (currentPassword, newPassword) => {
+    try {
+      await authAPI.changePassword({ current_password: currentPassword, new_password: newPassword });
+      toast.success('Password changed successfully!');
+    } catch (err) {
+      const errorMsg = err.response?.data?.detail || 'Failed to change password';
+      toast.error(errorMsg);
+      console.error(err);
+    }
+  };
+
+  const getFilteredTransactions = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return transactions.filter(transaction => {
+      const matchesSearch =
+        transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesType = filterType === 'all' || transaction.type === filterType;
+
+      let matchesDate = true;
+      const transactionDate = new Date(transaction.date);
+
+      if (dateFilter === 'month') {
+        matchesDate =
+          transactionDate.getMonth() === currentMonth &&
+          transactionDate.getFullYear() === currentYear;
+      } else if (dateFilter === 'last-month') {
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+        matchesDate =
+          transactionDate.getMonth() === lastMonth &&
+          transactionDate.getFullYear() === lastMonthYear;
+      } else if (dateFilter === '30days') {
+        const thirtyDaysAgo = new Date(now);
+        thirtyDaysAgo.setDate(now.getDate() - 30);
+        matchesDate = transactionDate >= thirtyDaysAgo;
+      }
+
+      return matchesSearch && matchesType && matchesDate;
+    });
   };
 
   const handleDeleteTransaction = async (id) => {
@@ -127,8 +291,11 @@ function App() {
       await transactionAPI.delete(id);
       await Promise.all([fetchTransactions(), fetchSummary()]);
       setError(null);
+      toast.success('Transaction deleted successfully');
     } catch (err) {
-      setError('Failed to delete transaction');
+      const errorMsg = 'Failed to delete transaction';
+      setError(errorMsg);
+      toast.error(errorMsg);
       console.error(err);
     }
   };
@@ -142,22 +309,30 @@ function App() {
   }
 
   if (!isAuthenticated) {
-    return <Auth onLogin={handleLogin} />;
+    return (
+      <>
+        <Toaster position="top-right" reverseOrder={false} />
+        <Auth onLogin={handleLogin} />
+      </>
+    );
   }
 
   return (
-    <div className="app">
-      <header>
-        <div className="header-content">
-          <h1>Finance Tracker</h1>
-          <div className="user-info">
-            <span>Welcome, {user?.name}!</span>
-            <button onClick={handleLogout} className="btn-logout">
-              Logout
-            </button>
+    <>
+      <Navigation activePage={activePage} setActivePage={setActivePage} />
+      <div className="app">
+        <Toaster position="top-right" reverseOrder={false} />
+        <header>
+          <div className="header-content">
+            <h1>BudgetO</h1>
+            <div className="user-info">
+              <span>Welcome, {user?.name}!</span>
+              <button onClick={handleLogout} className="btn-logout">
+                Logout
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       {error && (
         <div className="error-message">
@@ -166,14 +341,74 @@ function App() {
       )}
 
       <main className="container">
-        <Summary summary={summary} />
-        <TransactionForm onSubmit={handleAddTransaction} />
-        <TransactionList
-          transactions={transactions}
-          onDelete={handleDeleteTransaction}
-        />
+        {activePage === 'summary' && (
+          <Summary
+            summary={summary}
+            transactions={transactions}
+            currencySymbol={getCurrencySymbol(currency)}
+            onAddTransaction={handleAddTransaction}
+          />
+        )}
+
+        {activePage === 'charts' && (
+          <Charts transactions={transactions} currencySymbol={getCurrencySymbol(currency)} />
+        )}
+
+        {activePage === 'add-transaction' && (
+          <TransactionForm
+            onSubmit={handleAddTransaction}
+            onUpdate={handleUpdateTransaction}
+            editingTransaction={editingTransaction}
+            onCancelEdit={handleCancelEdit}
+          />
+        )}
+
+        {activePage === 'transactions' && (
+          <>
+            <SearchFilter
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              filterType={filterType}
+              onFilterTypeChange={setFilterType}
+              dateFilter={dateFilter}
+              onDateFilterChange={setDateFilter}
+              onClearFilters={handleClearFilters}
+            />
+            <TransactionList
+              transactions={getFilteredTransactions()}
+              onDelete={handleDeleteTransaction}
+              onEdit={handleEditTransaction}
+              currencySymbol={getCurrencySymbol(currency)}
+            />
+          </>
+        )}
+
+        {activePage === 'recurring' && (
+          <RecurringTransactions
+            currencySymbol={getCurrencySymbol(currency)}
+          />
+        )}
+
+        {activePage === 'goals' && (
+          <Goals
+            currencySymbol={getCurrencySymbol(currency)}
+          />
+        )}
+
+        {activePage === 'settings' && (
+          <Settings
+            user={user}
+            darkMode={darkMode}
+            currency={currency}
+            onToggleDarkMode={handleToggleDarkMode}
+            onUpdateUser={handleUpdateUser}
+            onChangePassword={handleChangePassword}
+            onChangeCurrency={handleCurrencyChange}
+          />
+        )}
       </main>
-    </div>
+      </div>
+    </>
   );
 }
 

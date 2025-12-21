@@ -51,7 +51,7 @@ const Auth = ({ onLogin }) => {
   return (
     <div className="auth-container">
       <div className="auth-box">
-        <h1>Finance Tracker</h1>
+        <h1>BudgetO</h1>
         <h2>{isLogin ? 'Login' : 'Register'}</h2>
 
         {error && <div className="auth-error">{error}</div>}

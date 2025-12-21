@@ -1,6 +1,6 @@
 import React from 'react';
 
-const TransactionList = ({ transactions, onDelete }) => {
+const TransactionList = ({ transactions, onDelete, onEdit, currencySymbol = '$' }) => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -12,9 +12,14 @@ const TransactionList = ({ transactions, onDelete }) => {
 
   return (
     <div className="transaction-list">
-      <h2>Transactions</h2>
+      <div className="transaction-list-header">
+        <h2>Transactions</h2>
+        {transactions.length > 0 && (
+          <span className="transaction-count">{transactions.length} transaction{transactions.length !== 1 ? 's' : ''}</span>
+        )}
+      </div>
       {transactions.length === 0 ? (
-        <p className="no-transactions">No transactions yet. Add your first transaction above!</p>
+        <p className="no-transactions">No transactions found. Try adjusting your filters.</p>
       ) : (
         <div className="transactions">
           {transactions.map((transaction) => (
@@ -31,8 +36,15 @@ const TransactionList = ({ transactions, onDelete }) => {
               </div>
               <div className="transaction-actions">
                 <span className={`amount ${transaction.type}`}>
-                  {transaction.type === 'income' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                  {transaction.type === 'income' ? '+' : '-'}{currencySymbol}{transaction.amount.toFixed(2)}
                 </span>
+                <button
+                  onClick={() => onEdit(transaction)}
+                  className="btn-edit"
+                  aria-label="Edit transaction"
+                >
+                  Edit
+                </button>
                 <button
                   onClick={() => onDelete(transaction._id)}
                   className="btn-delete"

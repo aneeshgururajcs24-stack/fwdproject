@@ -41,6 +41,14 @@ class DatabaseManager:
     def user_collection(self):
         return self.database.get_collection("users")
 
+    @property
+    def recurring_transaction_collection(self):
+        return self.database.get_collection("recurring_transactions")
+
+    @property
+    def goal_collection(self):
+        return self.database.get_collection("goals")
+
     async def close(self):
         if self._client:
             self._client.close()

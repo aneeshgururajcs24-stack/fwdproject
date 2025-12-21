@@ -26,6 +26,8 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   getCurrentUser: () => api.get('/auth/me'),
+  updateProfile: (data) => api.put('/auth/profile', data),
+  changePassword: (data) => api.put('/auth/password', data),
 };
 
 export const transactionAPI = {
@@ -35,6 +37,22 @@ export const transactionAPI = {
   update: (id, data) => api.put(`/transactions/${id}`, data),
   delete: (id) => api.delete(`/transactions/${id}`),
   getSummary: () => api.get('/summary'),
+};
+
+export const recurringTransactionAPI = {
+  getAll: () => api.get('/recurring-transactions'),
+  getOne: (id) => api.get(`/recurring-transactions/${id}`),
+  create: (data) => api.post('/recurring-transactions', data),
+  update: (id, data) => api.put(`/recurring-transactions/${id}`, data),
+  delete: (id) => api.delete(`/recurring-transactions/${id}`),
+};
+
+export const goalAPI = {
+  getAll: () => api.get('/goals'),
+  getOne: (id) => api.get(`/goals/${id}`),
+  create: (data) => api.post('/goals', data),
+  update: (id, data) => api.put(`/goals/${id}`, data),
+  delete: (id) => api.delete(`/goals/${id}`),
 };
 
 export const setAuthToken = (token) => {

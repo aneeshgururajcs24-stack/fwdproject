@@ -83,3 +83,87 @@ class SummaryResponse(BaseModel):
     total_expense: float
     balance: float
     transaction_count: int
+
+
+# Recurring Transactions Models
+class FrequencyType(str, Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    YEARLY = "yearly"
+
+
+class RecurringTransactionBase(BaseModel):
+    description: str = Field(..., min_length=1, max_length=200)
+    amount: float = Field(..., gt=0)
+    type: TransactionType
+    category: str = Field(..., min_length=1, max_length=50)
+    frequency: FrequencyType
+    start_date: datetime = Field(default_factory=get_utc_now)
+    is_active: bool = True
+
+
+class RecurringTransactionCreate(RecurringTransactionBase):
+    pass
+
+
+class RecurringTransactionUpdate(BaseModel):
+    description: Optional[str] = Field(None, min_length=1, max_length=200)
+    amount: Optional[float] = Field(None, gt=0)
+    type: Optional[TransactionType] = None
+    category: Optional[str] = Field(None, min_length=1, max_length=50)
+    frequency: Optional[FrequencyType] = None
+    start_date: Optional[datetime] = None
+    is_active: Optional[bool] = None
+
+
+class RecurringTransactionResponse(RecurringTransactionBase):
+    id: str = Field(alias="_id")
+    user_id: str
+    created_at: datetime
+
+    class Config:
+        populate_by_name = True
+
+
+# Goals Models
+class GoalCategory(str, Enum):
+    EMERGENCY = "emergency"
+    VACATION = "vacation"
+    PURCHASE = "purchase"
+    EDUCATION = "education"
+    RETIREMENT = "retirement"
+    INVESTMENT = "investment"
+    DEBT = "debt"
+    OTHER = "other"
+
+
+class GoalBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    target_amount: float = Field(..., gt=0)
+    current_amount: float = Field(default=0, ge=0)
+    category: GoalCategory
+    deadline: Optional[datetime] = None
+    description: Optional[str] = Field(None, max_length=500)
+
+
+class GoalCreate(GoalBase):
+    pass
+
+
+class GoalUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    target_amount: Optional[float] = Field(None, gt=0)
+    current_amount: Optional[float] = Field(None, ge=0)
+    category: Optional[GoalCategory] = None
+    deadline: Optional[datetime] = None
+    description: Optional[str] = Field(None, max_length=500)
+
+
+class GoalResponse(GoalBase):
+    id: str = Field(alias="_id")
+    user_id: str
+    created_at: datetime
+
+    class Config:
+        populate_by_name = True
